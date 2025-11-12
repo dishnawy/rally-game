@@ -3,8 +3,8 @@ const CONFIG = {
     CANVAS_WIDTH: 800,
     CANVAS_HEIGHT: 600,
     TILE_SIZE: 40,
-    PLAYER_SPEED: 3,
-    AI_SPEED: 2,
+    PLAYER_SPEED: 1.5,
+    AI_SPEED: 1.2,
     ROCKET_SPEED: 8,
     ROCKET_LIFETIME: 2000,
     CHEST_SPAWN_RATE: 0.002,
@@ -84,30 +84,71 @@ function resizeCanvas() {
 }
 
 function generateMap() {
-    // Generate a simple road map
+    // Generate a simple road map with streets
     map = [];
     for (let y = 0; y < CONFIG.MAP_HEIGHT / CONFIG.TILE_SIZE; y++) {
         map[y] = [];
         for (let x = 0; x < CONFIG.MAP_WIDTH / CONFIG.TILE_SIZE; x++) {
-            // Create road pattern
+            // Create road pattern - streets every 3 tiles
             if (x % 3 === 0 || y % 3 === 0) {
                 map[y][x] = 1; // Road
             } else {
-                map[y][x] = 0; // Grass
+                map[y][x] = 0; // Grass (not drivable)
             }
         }
     }
 }
 
+// Check if a position is on a road tile
+function isOnRoad(x, y) {
+    const tileX = Math.floor(x / CONFIG.TILE_SIZE);
+    const tileY = Math.floor(y / CONFIG.TILE_SIZE);
+    
+    if (tileY < 0 || tileY >= map.length || tileX < 0 || tileX >= map[tileY].length) {
+        return false;
+    }
+    
+    return map[tileY][tileX] === 1; // 1 = Road, 0 = Grass
+}
+
+// Check if a rectangle (car) is on a road
+function isCarOnRoad(carX, carY, carWidth, carHeight) {
+    // Check center point - this is the main requirement
+    // Also check corners to ensure car doesn't go off-road
+    const checkPoints = [
+        { x: carX, y: carY }, // Center (required)
+        { x: carX - carWidth/2, y: carY - carHeight/2 }, // Top-left
+        { x: carX + carWidth/2, y: carY - carHeight/2 }, // Top-right
+        { x: carX - carWidth/2, y: carY + carHeight/2 }, // Bottom-left
+        { x: carX + carWidth/2, y: carY + carHeight/2 } // Bottom-right
+    ];
+    
+    // Center must be on road, and at least 3 out of 5 points should be on road
+    const centerOnRoad = isOnRoad(carX, carY);
+    if (!centerOnRoad) return false;
+    
+    const pointsOnRoad = checkPoints.filter(point => isOnRoad(point.x, point.y)).length;
+    return pointsOnRoad >= 3; // At least 3 points (including center) must be on road
+}
+
 function spawnAICars(count) {
     aiCars = [];
     for (let i = 0; i < count; i++) {
+        // Spawn on road tiles only
+        let x, y;
+        let attempts = 0;
+        do {
+            x = Math.random() * CONFIG.MAP_WIDTH;
+            y = Math.random() * CONFIG.MAP_HEIGHT;
+            attempts++;
+        } while (!isOnRoad(x, y) && attempts < 50);
+        
         aiCars.push({
-            x: Math.random() * CONFIG.MAP_WIDTH,
-            y: Math.random() * CONFIG.MAP_HEIGHT,
+            x: x,
+            y: y,
             width: 25,
             height: 25,
-            speed: CONFIG.AI_SPEED + Math.random() * 1,
+            speed: CONFIG.AI_SPEED + Math.random() * 0.5,
             angle: Math.random() * Math.PI * 2,
             color: `hsl(${Math.random() * 360}, 70%, 50%)`
         });
@@ -171,13 +212,32 @@ function setupEventListeners() {
 function startGame() {
     gameState = 'playing';
     score = 0;
-    player.x = CONFIG.CANVAS_WIDTH / 2;
-    player.y = CONFIG.CANVAS_HEIGHT / 2;
+    
+    // Spawn player on a road tile
+    let startX = CONFIG.MAP_WIDTH / 2;
+    let startY = CONFIG.MAP_HEIGHT / 2;
+    // Find nearest road tile
+    const tileX = Math.floor(startX / CONFIG.TILE_SIZE);
+    const tileY = Math.floor(startY / CONFIG.TILE_SIZE);
+    // Adjust to center of nearest road tile
+    if (tileX % 3 !== 0) {
+        startX = Math.floor(tileX / 3) * 3 * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+    } else {
+        startX = tileX * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+    }
+    if (tileY % 3 !== 0) {
+        startY = Math.floor(tileY / 3) * 3 * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+    } else {
+        startY = tileY * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+    }
+    
+    player.x = startX;
+    player.y = startY;
     player.activePower = null;
     player.powerTimer = 0;
     player.invisible = false;
-    camera.x = 0;
-    camera.y = 0;
+    camera.x = player.x - CONFIG.CANVAS_WIDTH / 2;
+    camera.y = player.y - CONFIG.CANVAS_HEIGHT / 2;
     rockets = [];
     chests = [];
     bombs = [];
@@ -208,9 +268,26 @@ function updatePlayer() {
         currentSpeed *= 1.5;
     }
     
-    // Update position
-    player.x += dx * currentSpeed;
-    player.y += dy * currentSpeed;
+    // Try to update position, but only if on road
+    const newX = player.x + dx * currentSpeed;
+    const newY = player.y + dy * currentSpeed;
+    
+    // Check if new position would be on road (check X and Y separately for smoother movement)
+    if (dx !== 0) {
+        const testX = newX;
+        const testY = player.y;
+        if (isCarOnRoad(testX, testY, player.width, player.height)) {
+            player.x = testX;
+        }
+    }
+    
+    if (dy !== 0) {
+        const testX = player.x;
+        const testY = newY;
+        if (isCarOnRoad(testX, testY, player.width, player.height)) {
+            player.y = testY;
+        }
+    }
     
     // Update angle for visual direction
     if (dx !== 0 || dy !== 0) {
@@ -245,8 +322,17 @@ function updateAICars() {
         
         if (dist > 0) {
             const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
-            car.x += Math.cos(angle) * car.speed;
-            car.y += Math.sin(angle) * car.speed;
+            const newX = car.x + Math.cos(angle) * car.speed;
+            const newY = car.y + Math.sin(angle) * car.speed;
+            
+            // Only move if on road
+            if (isCarOnRoad(newX, car.y, car.width, car.height)) {
+                car.x = newX;
+            }
+            if (isCarOnRoad(car.x, newY, car.width, car.height)) {
+                car.y = newY;
+            }
+            
             car.angle = angle;
         }
         
@@ -259,19 +345,75 @@ function updateAICars() {
 function shootRocket() {
     if (gameState !== 'playing') return;
     
+    // Find the closest AI car
+    let closestCar = null;
+    let closestDistance = Infinity;
+    
+    aiCars.forEach(car => {
+        const dx = car.x - player.x;
+        const dy = car.y - player.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestCar = car;
+        }
+    });
+    
+    // If no cars exist, don't shoot
+    if (!closestCar) return;
+    
+    // Calculate direction to closest car
+    const dx = closestCar.x - player.x;
+    const dy = closestCar.y - player.y;
+    const angle = Math.atan2(dy, dx);
+    
+    // Create rocket that targets the closest car
     rockets.push({
         x: player.x,
         y: player.y,
-        vx: Math.cos(player.angle) * CONFIG.ROCKET_SPEED,
-        vy: Math.sin(player.angle) * CONFIG.ROCKET_SPEED,
+        vx: Math.cos(angle) * CONFIG.ROCKET_SPEED,
+        vy: Math.sin(angle) * CONFIG.ROCKET_SPEED,
         lifetime: CONFIG.ROCKET_LIFETIME,
         width: 10,
-        height: 10
+        height: 10,
+        targetCar: closestCar, // Store reference to target for homing
+        targetX: closestCar.x, // Store initial target position
+        targetY: closestCar.y
     });
 }
 
 function updateRockets() {
     rockets = rockets.filter(rocket => {
+        // Homing behavior: if target car still exists, adjust trajectory towards it
+        if (rocket.targetCar && aiCars.includes(rocket.targetCar)) {
+            const dx = rocket.targetCar.x - rocket.x;
+            const dy = rocket.targetCar.y - rocket.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                // Gradually adjust angle towards target (homing effect)
+                const targetAngle = Math.atan2(dy, dx);
+                const currentAngle = Math.atan2(rocket.vy, rocket.vx);
+                
+                // Smooth angle interpolation for homing
+                let newAngle = currentAngle;
+                let angleDiff = targetAngle - currentAngle;
+                
+                // Normalize angle difference to [-PI, PI]
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                
+                // Adjust angle by 10% towards target (creates homing effect)
+                newAngle = currentAngle + angleDiff * 0.1;
+                
+                // Update velocity
+                rocket.vx = Math.cos(newAngle) * CONFIG.ROCKET_SPEED;
+                rocket.vy = Math.sin(newAngle) * CONFIG.ROCKET_SPEED;
+            }
+        }
+        
+        // Move rocket
         rocket.x += rocket.vx;
         rocket.y += rocket.vy;
         rocket.lifetime -= 16;
@@ -300,9 +442,18 @@ function updateRockets() {
 
 function spawnChests() {
     if (Math.random() < CONFIG.CHEST_SPAWN_RATE) {
+        // Spawn chests on road tiles only
+        let x, y;
+        let attempts = 0;
+        do {
+            x = Math.random() * CONFIG.MAP_WIDTH;
+            y = Math.random() * CONFIG.MAP_HEIGHT;
+            attempts++;
+        } while (!isOnRoad(x, y) && attempts < 50);
+        
         chests.push({
-            x: Math.random() * CONFIG.MAP_WIDTH,
-            y: Math.random() * CONFIG.MAP_HEIGHT,
+            x: x,
+            y: y,
             width: 20,
             height: 20,
             collected: false
@@ -618,4 +769,5 @@ function gameLoop() {
 
 // Initialize when page loads
 window.addEventListener('load', init);
+
 
