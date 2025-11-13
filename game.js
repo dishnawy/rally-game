@@ -20,6 +20,18 @@ let score = 0;
 let keys = {};
 let touchControls = {};
 
+// Virtual Joystick
+let joystick = {
+    active: false,
+    x: 0,
+    y: 0,
+    baseX: 0,
+    baseY: 0,
+    maxDistance: 35, // Maximum distance handle can move from center
+    currentX: 0,
+    currentY: 0
+};
+
 // Player
 let player = {
     x: CONFIG.CANVAS_WIDTH / 2,
@@ -169,39 +181,112 @@ function setupEventListeners() {
         keys[e.key.toLowerCase()] = false;
     });
     
-    // Touch controls
-    const controlButtons = ['up', 'down', 'left', 'right', 'shoot', 'bomb'];
-    controlButtons.forEach(btn => {
-        const element = document.getElementById(btn);
-        if (element) {
-            element.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                touchControls[btn] = true;
-                if (btn === 'shoot') {
-                    shootRocket();
-                } else if (btn === 'bomb' && player.activePower === 'bomb') {
-                    placeBomb();
-                }
-            });
-            
-            element.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                touchControls[btn] = false;
-            });
-            
-            element.addEventListener('mousedown', (e) => {
-                touchControls[btn] = true;
-                if (btn === 'shoot') {
-                    shootRocket();
-                } else if (btn === 'bomb' && player.activePower === 'bomb') {
-                    placeBomb();
-                }
-            });
-            
-            element.addEventListener('mouseup', () => {
-                touchControls[btn] = false;
-            });
+    // Virtual Joystick
+    const joystickContainer = document.getElementById('joystickContainer');
+    const joystickHandle = document.getElementById('joystickHandle');
+    
+    function getJoystickPosition(e) {
+        const rect = joystickContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
         }
+        
+        return {
+            x: clientX - centerX,
+            y: clientY - centerY,
+            centerX: centerX,
+            centerY: centerY
+        };
+    }
+    
+    function updateJoystick(e) {
+        if (!joystick.active) return;
+        
+        const pos = getJoystickPosition(e);
+        const distance = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+        
+        if (distance > joystick.maxDistance) {
+            // Limit to max distance
+            const angle = Math.atan2(pos.y, pos.x);
+            joystick.currentX = Math.cos(angle) * joystick.maxDistance;
+            joystick.currentY = Math.sin(angle) * joystick.maxDistance;
+        } else {
+            joystick.currentX = pos.x;
+            joystick.currentY = pos.y;
+        }
+        
+        // Update visual position
+        joystickHandle.style.transform = `translate(calc(-50% + ${joystick.currentX}px), calc(-50% + ${joystick.currentY}px))`;
+    }
+    
+    function startJoystick(e) {
+        e.preventDefault();
+        joystick.active = true;
+        joystickContainer.classList.add('active');
+        
+        const pos = getJoystickPosition(e);
+        joystick.baseX = pos.centerX;
+        joystick.baseY = pos.centerY;
+        
+        updateJoystick(e);
+    }
+    
+    function endJoystick(e) {
+        e.preventDefault();
+        joystick.active = false;
+        joystick.currentX = 0;
+        joystick.currentY = 0;
+        joystickContainer.classList.remove('active');
+        joystickHandle.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    // Touch events
+    joystickContainer.addEventListener('touchstart', startJoystick);
+    joystickContainer.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        updateJoystick(e);
+    });
+    joystickContainer.addEventListener('touchend', endJoystick);
+    joystickContainer.addEventListener('touchcancel', endJoystick);
+    
+    // Mouse events (for desktop testing)
+    joystickContainer.addEventListener('mousedown', startJoystick);
+    document.addEventListener('mousemove', updateJoystick);
+    document.addEventListener('mouseup', (e) => {
+        if (joystick.active) {
+            endJoystick(e);
+        }
+    });
+    
+    // Action buttons
+    const shootBtn = document.getElementById('shoot');
+    const bombBtn = document.getElementById('bomb');
+    
+    [shootBtn, bombBtn].forEach(btn => {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (btn.id === 'shoot') {
+                shootRocket();
+            } else if (btn.id === 'bomb' && player.activePower === 'bomb') {
+                placeBomb();
+            }
+        });
+        
+        btn.addEventListener('mousedown', (e) => {
+            if (btn.id === 'shoot') {
+                shootRocket();
+            } else if (btn.id === 'bomb' && player.activePower === 'bomb') {
+                placeBomb();
+            }
+        });
     });
     
     // Start/Restart buttons
@@ -212,6 +297,19 @@ function setupEventListeners() {
 function startGame() {
     gameState = 'playing';
     score = 0;
+    
+    // Reset joystick
+    joystick.active = false;
+    joystick.currentX = 0;
+    joystick.currentY = 0;
+    const joystickHandle = document.getElementById('joystickHandle');
+    if (joystickHandle) {
+        joystickHandle.style.transform = 'translate(-50%, -50%)';
+    }
+    const joystickContainer = document.getElementById('joystickContainer');
+    if (joystickContainer) {
+        joystickContainer.classList.remove('active');
+    }
     
     // Spawn player on a road tile
     let startX = CONFIG.MAP_WIDTH / 2;
@@ -251,10 +349,19 @@ function updatePlayer() {
     let dx = 0, dy = 0;
     
     // Check keyboard
-    if (keys['w'] || keys['arrowup'] || touchControls['up']) dy -= 1;
-    if (keys['s'] || keys['arrowdown'] || touchControls['down']) dy += 1;
-    if (keys['a'] || keys['arrowleft'] || touchControls['left']) dx -= 1;
-    if (keys['d'] || keys['arrowright'] || touchControls['right']) dx += 1;
+    if (keys['w'] || keys['arrowup']) dy -= 1;
+    if (keys['s'] || keys['arrowdown']) dy += 1;
+    if (keys['a'] || keys['arrowleft']) dx -= 1;
+    if (keys['d'] || keys['arrowright']) dx += 1;
+    
+    // Check virtual joystick
+    if (joystick.active && (joystick.currentX !== 0 || joystick.currentY !== 0)) {
+        // Normalize joystick input to -1 to 1 range
+        const normalizedX = joystick.currentX / joystick.maxDistance;
+        const normalizedY = joystick.currentY / joystick.maxDistance;
+        dx += normalizedX;
+        dy += normalizedY;
+    }
     
     // Normalize diagonal movement
     if (dx !== 0 && dy !== 0) {

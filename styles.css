@@ -68,33 +68,41 @@ body {
     z-index: 10;
 }
 
-#dpad {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
+#joystickContainer {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    touch-action: none;
 }
 
-.horizontal {
-    display: flex;
-    gap: 5px;
+#joystickBase {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.control-btn {
+#joystickHandle {
+    position: absolute;
     width: 50px;
     height: 50px;
-    border: 2px solid #fff;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 24px;
-    border-radius: 8px;
-    touch-action: none;
-    -webkit-tap-highlight-color: transparent;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
 }
 
-.control-btn:active {
-    background: rgba(255, 255, 255, 0.4);
-    transform: scale(0.95);
+#joystickContainer.active #joystickHandle {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(255, 255, 255, 0.8);
 }
 
 #actions {
@@ -171,10 +179,19 @@ body {
         font-size: 14px;
     }
     
-    .control-btn {
+    #joystickContainer {
+        width: 100px;
+        height: 100px;
+    }
+    
+    #joystickBase {
+        width: 100px;
+        height: 100px;
+    }
+    
+    #joystickHandle {
         width: 45px;
         height: 45px;
-        font-size: 20px;
     }
     
     .action-btn {
