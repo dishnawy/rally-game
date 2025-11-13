@@ -21,7 +21,7 @@ A web-based mobile game inspired by Rally-X, featuring a scrolling car game with
 - **Space**: Shoot rocket
 
 ### Mobile
-- **D-Pad**: Move car
+- **Virtual Joystick**: Touch and drag on the left side to move car
 - **🚀 Button**: Shoot rocket
 - **💣 Button**: Place bomb (when power is active)
 
@@ -42,6 +42,18 @@ This game can be deployed to any static web hosting service:
 - Any web server
 
 Simply upload all files to your hosting service.
+
+## iOS App Installation
+
+This game is set up as a Progressive Web App (PWA) and can be installed on iOS devices!
+
+**To install on iPhone/iPad:**
+1. Open Safari (not Chrome)
+2. Visit the game URL
+3. Tap the Share button → "Add to Home Screen"
+4. The app will appear on your home screen and work like a native app
+
+See `IOS_APP_GUIDE.md` for detailed instructions and icon creation guide.
 
 ## Technologies
 

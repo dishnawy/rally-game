@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create App Icons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Create App Icons for Rally-X Game</h1>
+    <p>This tool will help you create simple app icons. Click the buttons below to generate and download icons.</p>
+    
+    <canvas id="iconCanvas" width="512" height="512"></canvas>
+    
+    <div>
+        <button onclick="createIcon(192)">Generate 192x192 Icon</button>
+        <button onclick="createIcon(512)">Generate 512x512 Icon</button>
+    </div>
+    
+    <p><strong>Note:</strong> After generating, right-click the canvas and "Save Image As" to save the icon files.</p>
+    
+    <script>
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function createIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#4a9eff');
+            gradient.addColorStop(1, '#2a5a9f');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Draw a simple car icon
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = size / 20;
+            
+            // Car body
+            const carWidth = size * 0.6;
+            const carHeight = size * 0.3;
+            const carX = (size - carWidth) / 2;
+            const carY = size * 0.4;
+            
+            // Rounded rectangle for car
+            ctx.beginPath();
+            ctx.roundRect(carX, carY, carWidth, carHeight, size * 0.05);
+            ctx.fill();
+            
+            // Windows
+            ctx.fillStyle = '#4a9eff';
+            const windowWidth = carWidth * 0.25;
+            const windowHeight = carHeight * 0.6;
+            const windowY = carY + carHeight * 0.2;
+            
+            // Left window
+            ctx.fillRect(carX + carWidth * 0.15, windowY, windowWidth, windowHeight);
+            // Right window
+            ctx.fillRect(carX + carWidth * 0.6, windowY, windowWidth, windowHeight);
+            
+            // Wheels
+            ctx.fillStyle = '#333';
+            const wheelSize = size * 0.12;
+            const wheelY = carY + carHeight - wheelSize / 2;
+            
+            // Left wheel
+            ctx.beginPath();
+            ctx.arc(carX + carWidth * 0.25, wheelY, wheelSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Right wheel
+            ctx.beginPath();
+            ctx.arc(carX + carWidth * 0.75, wheelY, wheelSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add text
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${size * 0.15}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('RALLY-X', size / 2, size * 0.25);
+        }
+        
+        // Create initial icon
+        createIcon(512);
+    </script>
+</body>
+</html>
+

@@ -185,6 +185,11 @@ function setupEventListeners() {
     const joystickContainer = document.getElementById('joystickContainer');
     const joystickHandle = document.getElementById('joystickHandle');
     
+    if (!joystickContainer || !joystickHandle) {
+        console.error('Joystick elements not found!');
+        return;
+    }
+    
     function getJoystickPosition(e) {
         const rect = joystickContainer.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -229,6 +234,7 @@ function setupEventListeners() {
     
     function startJoystick(e) {
         e.preventDefault();
+        e.stopPropagation();
         joystick.active = true;
         joystickContainer.classList.add('active');
         
@@ -241,6 +247,7 @@ function setupEventListeners() {
     
     function endJoystick(e) {
         e.preventDefault();
+        e.stopPropagation();
         joystick.active = false;
         joystick.currentX = 0;
         joystick.currentY = 0;
@@ -248,14 +255,15 @@ function setupEventListeners() {
         joystickHandle.style.transform = 'translate(-50%, -50%)';
     }
     
-    // Touch events
-    joystickContainer.addEventListener('touchstart', startJoystick);
+    // Touch events - use capture phase to ensure we get the events
+    joystickContainer.addEventListener('touchstart', startJoystick, { passive: false, capture: true });
     joystickContainer.addEventListener('touchmove', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         updateJoystick(e);
-    });
-    joystickContainer.addEventListener('touchend', endJoystick);
-    joystickContainer.addEventListener('touchcancel', endJoystick);
+    }, { passive: false, capture: true });
+    joystickContainer.addEventListener('touchend', endJoystick, { passive: false, capture: true });
+    joystickContainer.addEventListener('touchcancel', endJoystick, { passive: false, capture: true });
     
     // Mouse events (for desktop testing)
     joystickContainer.addEventListener('mousedown', startJoystick);
