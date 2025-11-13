@@ -1,11 +1,18 @@
 // Service Worker for Rally-X Game
-const CACHE_NAME = 'rally-x-game-v1';
+const CACHE_NAME = 'rally-x-game-v2';
+
+// Get the base path (works for both root and subdirectory deployments)
+const getBasePath = () => {
+  return self.location.pathname.replace(/\/sw\.js$/, '') || '/';
+};
+
+const basePath = getBasePath();
 const urlsToCache = [
-  './',
-  './index.html',
-  './game.js',
-  './styles.css',
-  './manifest.json'
+  basePath + 'index.html',
+  basePath + 'game.js',
+  basePath + 'styles.css',
+  basePath + 'manifest.json',
+  basePath // root path
 ];
 
 // Install event - cache resources
@@ -21,6 +28,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -28,7 +40,24 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        // Network first, then cache
+        return fetch(event.request).then((response) => {
+          // Don't cache non-successful responses
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          // Clone the response
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        }).catch(() => {
+          // If network fails and it's a navigation request, return index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match(basePath + 'index.html');
+          }
+        });
       }
     )
   );
