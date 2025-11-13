@@ -1,52 +1,46 @@
 # GitHub Pages Deployment Guide
 
-## Quick Setup Steps
+## Quick Setup Steps (Recommended Method)
 
-### 1. Commit and Push the Workflow
-The GitHub Actions workflow has been created. Commit and push it:
-
-```bash
-git add .github/workflows/deploy.yml
-git commit -m "Add GitHub Pages deployment workflow"
-git push
-```
-
-### 2. Enable GitHub Pages in Repository Settings
+### 1. Enable GitHub Pages in Repository Settings
 
 1. Go to your repository on GitHub: https://github.com/dishnawy/rally-game
 2. Click on **Settings** (in the repository menu)
 3. Scroll down to **Pages** in the left sidebar
 4. Under **Source**, select:
-   - **Source**: `GitHub Actions` (not "Deploy from a branch")
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/ (root)`
 5. Click **Save**
 
-### 3. Wait for Deployment
+### 2. Wait for Deployment
 
-- After pushing, GitHub Actions will automatically deploy your site
-- You can check the deployment status in the **Actions** tab of your repository
+- GitHub will build and deploy your site automatically
+- This usually takes 1-2 minutes
 - Once complete, your game will be live at:
   **https://dishnawy.github.io/rally-game/**
 
-### 4. Automatic Future Deployments
+### 3. Important Notes
 
-Every time you push changes to the `main` branch, GitHub Actions will automatically:
-- Build and deploy your site
-- Make it available at the same URL
+- **Repository must be public** for GitHub Pages to work on free accounts
+- If your repo is private, you'll need to upgrade to GitHub Pro or make it public
+- After making changes, push to `main` and wait a few minutes for the site to update
 
 ## Troubleshooting
 
-- If deployment fails, check the **Actions** tab for error messages
-- Make sure `index.html` is in the root directory (✓ it is)
-- The workflow uses the modern GitHub Pages deployment method (GitHub Actions)
+### Getting 404 Error?
 
-## Manual Deployment (Alternative)
+1. **Check if repository is public**: Go to Settings → scroll to bottom → check "Danger Zone" → if it says "Change visibility", your repo might be private
+2. **Wait a few minutes**: First deployment can take 2-5 minutes
+3. **Check the Pages settings**: Make sure branch is set to `main` and folder is `/ (root)`
+4. **Verify the URL**: Should be `https://dishnawy.github.io/rally-game/` (note: `rally-game`, not `rally-x-game`)
 
-If you prefer manual deployment instead of automatic:
+### Alternative: GitHub Actions Method
+
+If you prefer using GitHub Actions (already set up):
 
 1. Go to **Settings** → **Pages**
-2. Under **Source**, select **Deploy from a branch**
-3. Choose branch: `main` and folder: `/ (root)`
-4. Click **Save**
-
-Note: With manual deployment, you'll need to push changes and wait a few minutes for GitHub to rebuild the site.
+2. Under **Source**, select **GitHub Actions**
+3. The workflow will run automatically on the next push
+4. Check the **Actions** tab to see deployment status
 
