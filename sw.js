@@ -1,9 +1,11 @@
 // Service Worker for Rally-X Game
-const CACHE_NAME = 'rally-x-game-v2';
+const CACHE_NAME = 'rally-x-game-v3';
 
 // Get the base path (works for both root and subdirectory deployments)
 const getBasePath = () => {
-  return self.location.pathname.replace(/\/sw\.js$/, '') || '/';
+  const path = self.location.pathname.replace(/\/sw\.js$/, '');
+  // Ensure path ends with / for proper resolution
+  return path.endsWith('/') ? path : path + '/';
 };
 
 const basePath = getBasePath();
@@ -55,7 +57,10 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {
           // If network fails and it's a navigation request, return index.html
           if (event.request.mode === 'navigate') {
-            return caches.match(basePath + 'index.html');
+            return caches.match(basePath + 'index.html').catch(() => {
+              // Fallback: try to match just index.html
+              return caches.match('index.html');
+            });
           }
         });
       }
